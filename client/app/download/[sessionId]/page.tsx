@@ -70,34 +70,87 @@ export default function DownloadPage() {
       type: "application/octet-stream",
     });
 
-    // Create download link
     setIsDownloading(true);
+    setDownloadProgress(0);
 
+    // Create a download worker to track progress
+    const downloadWorker = new Worker(
+      URL.createObjectURL(
+        new Blob(
+          [
+            `
+    self.onmessage = async (event) => {
+      const { fileBlob, fileName } = event.data;
+      
+      try {
+        // Simulate download progress
+        const totalSize = fileBlob.size;
+        const chunkSize = 1024 * 1024; // 1MB chunks
+        let downloadedSize = 0;
+
+        while (downloadedSize < totalSize) {
+          // Simulate chunk download
+          const chunk = fileBlob.slice(downloadedSize, downloadedSize + chunkSize);
+          downloadedSize += chunk.size;
+
+          // Report progress
+          self.postMessage({
+            type: 'progress',
+            progress: Math.min(100, Math.round((downloadedSize / totalSize) * 100))
+          });
+
+          // Simulate network delay
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+
+        // Download complete
+        self.postMessage({ type: 'complete' });
+      } catch (error) {
+        self.postMessage({ type: 'error', error: error.message });
+      }
+    }
+  `,
+          ],
+          { type: "application/javascript" }
+        )
+      )
+    );
+
+    // Create download link
     const downloadUrl = URL.createObjectURL(fileBlob);
     const a = document.createElement("a");
     a.href = downloadUrl;
     a.download = receivingFile.current.metadata.name;
-    a.click();
 
-    // Clean up
-    URL.revokeObjectURL(downloadUrl);
+    // Worker message handler
+    downloadWorker.onmessage = (event) => {
+      switch (event.data.type) {
+        case "progress":
+          setDownloadProgress(event.data.progress);
+          break;
+        case "complete":
+          a.click();
+          URL.revokeObjectURL(downloadUrl);
+          setIsDownloading(false);
+          setIsComplete(true);
+          setDownloadProgress(100);
+          downloadWorker.terminate();
+          break;
+        case "error":
+          console.error("Download error:", event.data.error);
+          setIsDownloading(false);
+          downloadWorker.terminate();
+          break;
+      }
+    };
+
+    // Start the download
+    downloadWorker.postMessage({
+      fileBlob,
+      fileName: receivingFile.current.metadata.name,
+    });
 
     setError(null);
-    setIsComplete(true);
-    setIsDownloading(false);
-
-    // // Simulate download progress
-    // let progress = 0;
-    // const interval = setInterval(() => {
-    //   progress += 2;
-    //   setDownloadProgress(progress);
-
-    //   if (progress >= 100) {
-    //     clearInterval(interval);
-    //     setIsDownloading(false);
-    //     setIsComplete(true);
-    //   }
-    // }, 100);
   };
 
   const handleQRScan = (result: string | null) => {
