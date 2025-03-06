@@ -11,6 +11,7 @@ export const useWebRTCReceiver = (wsUrl: string) => {
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
   const [loading, setLoading] = useState(false);
   const [transferProgress, setTransferProgress] = useState(0);
+  const [metadataLoaded, setMetadataLoaded] = useState(false);
 
   const [dataChannelState, setDataChannelState] = useState<{
     isReady: boolean;
@@ -25,15 +26,25 @@ export const useWebRTCReceiver = (wsUrl: string) => {
     receivedChunks: ArrayBuffer[];
     receivedSize?: number;
     totalSize: number;
-  }>({
+  } | null>({
     metadata: null,
     receivedChunks: [],
     totalSize: 0,
     receivedSize: 0,
   });
 
+  const sendDownloadRequest = useCallback(() => {
+    if (!dataChannelRef.current || !dataChannelState.isReady) return;
+
+    dataChannelRef.current.send(
+      JSON.stringify({
+        type: "send-file-request",
+      })
+    );
+  }, [dataChannelRef, dataChannelState]);
+
   const handleIncomingMessage = useCallback(
-    (event: MessageEvent) => {
+    async (event: MessageEvent) => {
       try {
         setLoading(true);
         const jsonData = JSON.parse(event.data);
@@ -46,10 +57,10 @@ export const useWebRTCReceiver = (wsUrl: string) => {
             receivedSize: 0,
           };
 
+          setMetadataLoaded(true);
           return;
         }
       } catch {
-        // Not JSON data
         if (
           receivingFile.current?.receivedSize ==
           receivingFile.current?.totalSize
@@ -57,9 +68,15 @@ export const useWebRTCReceiver = (wsUrl: string) => {
           return;
 
         if (receivingFile.current?.metadata) {
-          const receivedBuffer = event.data as ArrayBuffer;
+          let receivedBuffer: ArrayBuffer;
+          if (event.data instanceof Blob) {
+            receivedBuffer = await event.data.arrayBuffer();
+          } else {
+            receivedBuffer = event.data as ArrayBuffer;
+          }
           if (!receivedBuffer) return;
 
+          console.log(receivedBuffer);
           const newReceivedSize =
             receivingFile.current.receivedSize! + receivedBuffer.byteLength;
           const newProgress = Math.floor(
@@ -193,7 +210,6 @@ export const useWebRTCReceiver = (wsUrl: string) => {
 
         case "error":
           setError(msg.sdp!);
-          setTimeout(() => setError(null), 5000);
           break;
       }
     };
@@ -207,14 +223,16 @@ export const useWebRTCReceiver = (wsUrl: string) => {
         peerConnectionRef.current = null;
       }
       targetIdRef.current = null;
+      setMetadataLoaded(false);
+      receivingFile.current = null;
     };
   }, [createPeerConnection, setError]);
 
   // Helper function to assemble and download the received file
   const downloadReceivedFile = useCallback(() => {
     if (
-      !receivingFile.current.metadata ||
-      receivingFile.current.receivedChunks.length === 0
+      !receivingFile.current?.metadata ||
+      receivingFile.current?.receivedChunks.length === 0
     ) {
       return null;
     }
@@ -234,6 +252,8 @@ export const useWebRTCReceiver = (wsUrl: string) => {
     joinSession,
     receivingFile,
     downloadReceivedFile,
+    metadataLoaded,
+    sendDownloadRequest,
     dataChannel: {
       isReady: dataChannelState.isReady,
       isOpen: dataChannelState.isOpen,

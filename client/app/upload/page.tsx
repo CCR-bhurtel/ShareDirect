@@ -27,8 +27,9 @@ export default function UploadPage() {
   const [downloadLimit, setDownloadLimit] = useState(1);
   const [isPasswordProtected, setIsPasswordProtected] = useState(false);
   const [password, setPassword] = useState("");
+  const [currentTab, setCurrentTab] = useState("upload");
 
-  const { sessionId, sendFile, createSession, dataChannel } =
+  const { sessionId, sendMetadata, createSession, dataChannel } =
     useWebRTCSender(SIGNALING_SERVER);
 
   const handleFileSelected = (selectedFile: File) => {
@@ -37,9 +38,9 @@ export default function UploadPage() {
 
   useEffect(() => {
     if (dataChannel.isReady && dataChannel.isOpen && file) {
-      sendFile(file);
+      sendMetadata(file);
     }
-  }, [dataChannel, file, sendFile]);
+  }, [dataChannel, file, sendMetadata]);
 
   const handleUpload = () => {
     if (!file) return;
@@ -51,14 +52,12 @@ export default function UploadPage() {
     // Simulate upload progress
     let progress = 0;
     const interval = setInterval(() => {
-      progress += 5;
+      progress += 10;
       setUploadProgress(progress);
 
       if (progress >= 100) {
         clearInterval(interval);
         setIsUploading(false);
-
-        // Generate a mock unique ID for the file
       }
     }, 200);
   };
@@ -87,13 +86,24 @@ export default function UploadPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="upload" className="w-full">
+      <Tabs value={currentTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2  md:grid-cols-3 ">
-          <TabsTrigger value="upload">Upload File</TabsTrigger>
-          <TabsTrigger value="options" disabled={!file}>
+          <TabsTrigger onClick={() => setCurrentTab("upload")} value="upload">
+            Upload File
+          </TabsTrigger>
+          <TabsTrigger
+            onClick={() => setCurrentTab("options")}
+            value="options"
+            disabled={!file}
+          >
             Sharing Options
           </TabsTrigger>
-          <TabsTrigger value="qr" disabled={!linkGenerated} id="qr-tab">
+          <TabsTrigger
+            onClick={() => setCurrentTab("qr")}
+            value="qr"
+            disabled={!linkGenerated}
+            id="qr-tab"
+          >
             QR Code
           </TabsTrigger>
         </TabsList>
@@ -148,7 +158,7 @@ export default function UploadPage() {
         <TabsContent value="options" className="mt-6">
           <Card>
             <CardContent className="pt-6 space-y-6">
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Clock className="h-4 w-4 text-muted-foreground" />
@@ -166,7 +176,7 @@ export default function UploadPage() {
                   value={[expirationHours]}
                   onValueChange={(value) => setExpirationHours(value[0])}
                 />
-              </div>
+              </div> */}
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">

@@ -303,7 +303,6 @@ export const useWebRTC = (wsUrl: string) => {
 
         case "error":
           setError(msg.sdp!);
-          setTimeout(() => setError(null), 5000);
           break;
       }
     };

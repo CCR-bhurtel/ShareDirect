@@ -10,7 +10,7 @@ export const useWebRTCSender = (wsUrl: string) => {
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const targetIdRef = useRef<string | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
-  const [loading, setLoading] = useState(false);
+  const fileRef = useRef<File | null>(null);
 
   const [dataChannelState, setDataChannelState] = useState<{
     isReady: boolean;
@@ -87,44 +87,77 @@ export const useWebRTCSender = (wsUrl: string) => {
     },
     [socketRef]
   );
-  const sendFile = useCallback(
+
+  // send metadata first
+  const sendMetadata = useCallback(
     (file: File) => {
       if (!dataChannelRef.current || !dataChannelState.isOpen) {
         console.error("Data channel is not open for sending");
         return;
       }
 
-      const chunkSize = 16384;
-      const fileReader = new FileReader();
-      let offset = 0;
+      fileRef.current = file;
 
-      dataChannelRef.current.send(
-        JSON.stringify({
-          type: "file-metadata",
-          name: file.name,
-          size: file.size,
-        })
-      );
-
-      fileReader.onload = (e) => {
-        if (!e.target?.result || !dataChannelRef.current) return;
-
-        dataChannelRef.current.send(e.target.result as ArrayBuffer);
-        offset += chunkSize;
-
-        if (offset < file.size) {
-          readSlice(offset);
-        }
-      };
-
-      const readSlice = (offset: number) => {
-        const slice = file.slice(offset, offset + chunkSize);
-        fileReader.readAsArrayBuffer(slice);
-      };
-
-      readSlice(0);
+      try {
+        dataChannelRef.current?.send(
+          JSON.stringify({
+            type: "file-metadata",
+            name: fileRef.current.name,
+            size: fileRef.current.size,
+          })
+        );
+      } catch (err) {
+        console.log("Error sending metadata", err);
+      }
     },
-    [dataChannelState]
+
+    [dataChannelState, dataChannelRef]
+  );
+
+  const sendFile = useCallback(() => {
+    const chunkSize = 16384;
+    const fileReader = new FileReader();
+    let offset = 0;
+
+    fileReader.onload = (e) => {
+      if (!fileRef.current) {
+        console.error("No file to send");
+        return;
+      }
+      if (!e.target?.result || !dataChannelRef.current) return;
+
+      console.log(e.target?.result);
+      dataChannelRef.current.send(e.target.result as ArrayBuffer);
+      offset += chunkSize;
+
+      if (offset < fileRef.current.size) {
+        readSlice(offset);
+      }
+    };
+
+    const readSlice = (offset: number) => {
+      if (!fileRef.current) return;
+      const slice = fileRef.current.slice(offset, offset + chunkSize);
+
+      fileReader.readAsArrayBuffer(slice);
+    };
+
+    readSlice(0);
+  }, []);
+
+  // handling send file request
+  const handleIncomingMessage = useCallback(
+    (event: MessageEvent) => {
+      try {
+        const jsonData = JSON.parse(event.data);
+        console.log(jsonData);
+
+        if (jsonData.type == "send-file-request") sendFile();
+      } catch (err) {
+        console.log(err);
+      }
+    },
+    [sendFile]
   );
 
   // Handle peer joined and create offer
@@ -145,27 +178,23 @@ export const useWebRTCSender = (wsUrl: string) => {
         setDataChannelState({ isReady: false, isOpen: false });
       };
 
-      dataChannel.onerror = (err) => {
-        console.error("Data channel error:", err);
-      };
+      dataChannel.onmessage = handleIncomingMessage;
 
       try {
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
 
         // Wait a moment to ensure the local description is set
-        setTimeout(() => {
-          safeSend({
-            action: "offer",
-            sdp: JSON.stringify(pc.localDescription),
-            target: peerId,
-          });
-        }, 100);
+        safeSend({
+          action: "offer",
+          sdp: JSON.stringify(pc.localDescription),
+          target: peerId,
+        });
       } catch (err) {
         console.error("Error creating offer:", err);
       }
     },
-    [createPeerConnection, safeSend]
+    [createPeerConnection, handleIncomingMessage, safeSend]
   );
 
   useEffect(() => {
@@ -214,7 +243,6 @@ export const useWebRTCSender = (wsUrl: string) => {
 
           case "error":
             setError(msg.sdp || "Unknown error");
-            setTimeout(() => setError(null), 5000);
             break;
         }
       } catch (err) {
@@ -244,11 +272,10 @@ export const useWebRTCSender = (wsUrl: string) => {
 
   return {
     ...base,
-    sendFile,
+    sendMetadata,
     dataChannel: {
       isReady: dataChannelState.isReady,
       isOpen: dataChannelState.isOpen,
     },
-    loading,
   };
 };

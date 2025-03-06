@@ -71,8 +71,7 @@ export default function LinkGenerator({ shareLink, onShowQR }: LinkGeneratorProp
       <div className="rounded-lg bg-muted p-4 text-sm">
         <p className="font-medium mb-1">Link Settings:</p>
         <ul className="space-y-1 text-muted-foreground">
-          <li>• Expires in 24 hours</li>
-          <li>• Limited to 1 download</li>
+          <li>• No download limit</li>
           <li>• No password protection</li>
         </ul>
       </div>
