@@ -11,7 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 // import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import QRCodeScanner from "@/components/qr-code-scanner";
-import { useWebRTC } from "@/hooks/useWebRTC";
+import { useWebRTCReceiver } from "@/hooks/webrtc";
 import { SIGNALING_SERVER } from "@/config/keys";
 
 export default function DownloadPage() {
@@ -40,7 +40,9 @@ export default function DownloadPage() {
     receivingFile,
 
     transferProgress,
-  } = useWebRTC(SIGNALING_SERVER);
+  } = useWebRTCReceiver(SIGNALING_SERVER);
+
+  console.log(transferProgress);
 
   useEffect(() => {
     if (!isConnected || sessionId) return;

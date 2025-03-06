@@ -18,7 +18,7 @@ export const useWebRTC = (wsUrl: string) => {
   const socketRef = useRef<WebSocket | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const targetIdRef = useRef<string | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState(false); // socket connection flag
   const [sessionId, setSessionId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);

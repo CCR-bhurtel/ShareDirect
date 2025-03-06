@@ -14,7 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import FileUploader from "@/components/file-uploader";
 import LinkGenerator from "@/components/link-generator";
 import QRCodeGenerator from "@/components/qr-code-generator";
-import { useWebRTC } from "@/hooks/useWebRTC";
+import { useWebRTCSender } from "@/hooks/webrtc/useWebRTCSender";
 import { SIGNALING_SERVER } from "@/config/keys";
 
 export default function UploadPage() {
@@ -29,7 +29,7 @@ export default function UploadPage() {
   const [password, setPassword] = useState("");
 
   const { sessionId, sendFile, createSession, dataChannel } =
-    useWebRTC(SIGNALING_SERVER);
+    useWebRTCSender(SIGNALING_SERVER);
 
   const handleFileSelected = (selectedFile: File) => {
     setFile(selectedFile);

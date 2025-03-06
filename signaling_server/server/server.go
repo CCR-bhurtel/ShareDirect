@@ -85,6 +85,8 @@ func (s *SignalingServer) handleSessionJoin(conn *Connection, msg models.Message
 		return
 	}
 
+	fmt.Println("Peer joined session: ", msg.TargetId)
+
 	response := models.Message{
 		Action:    "peer_joined",
 		SessionID: conn.SessionID,
