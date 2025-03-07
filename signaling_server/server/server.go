@@ -31,7 +31,6 @@ func (s *SignalingServer) HandleWebSocketConnection(w http.ResponseWriter, r *ht
 	}
 
 	connection := RegisterConnection(conn)
-
 	defer RemoveConnection(connection.SessionID)
 
 	// Listen for socket messages
@@ -81,7 +80,7 @@ func (s *SignalingServer) sendSessionCreated(conn *Connection) {
 func (s *SignalingServer) handleSessionJoin(conn *Connection, msg models.Message) {
 	targetConn := GetConnection(msg.TargetId)
 	if targetConn == nil {
-		s.sendError(conn, "File not found")
+		s.sendError(conn, "File not found, please try again later.")
 		return
 	}
 
@@ -100,7 +99,7 @@ func (s *SignalingServer) forwardOffer(sender *Connection, msg models.Message) {
 	fmt.Printf("Forwarding offer %v \n \n ", msg)
 	targetConn := GetConnection(msg.TargetId)
 	if targetConn == nil {
-		s.sendError(sender, "File not found")
+		s.sendError(sender, "Peer not found, Please try again later.")
 		return
 	}
 
@@ -119,7 +118,7 @@ func (s *SignalingServer) forwardAnswer(sender *Connection, msg models.Message) 
 	fmt.Printf("Forwarding answer %v \n \n ", msg)
 	targetConn := GetConnection(msg.TargetId)
 	if targetConn == nil {
-		s.sendError(sender, "Session not found")
+		s.sendError(sender, "Error connecting to peer")
 		return
 	}
 
@@ -137,7 +136,7 @@ func (s *SignalingServer) forwardCandidate(sender *Connection, msg models.Messag
 	fmt.Printf("Forwarding candidate %v \n \n ", msg)
 	targetConn := GetConnection(msg.TargetId)
 	if targetConn == nil {
-		s.sendError(sender, "Session not found")
+		s.sendError(sender, "Error connecting to peer")
 		return
 	}
 
@@ -162,5 +161,6 @@ func (s *SignalingServer) sendError(conn *Connection, errorMsg string) {
 		Action: "error",
 		SDP:    errorMsg,
 	}
+	fmt.Println("Error: ", errorMsg)
 	s.sendMessage(conn, errMessage)
 }

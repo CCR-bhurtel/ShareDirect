@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Clock, Hash, Lock } from "lucide-react";
+import { ArrowLeft, Hash, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,20 +17,33 @@ import QRCodeGenerator from "@/components/qr-code-generator";
 import { useWebRTCSender } from "@/hooks/webrtc/useWebRTCSender";
 import { SIGNALING_SERVER } from "@/config/keys";
 
+export interface FileDownloadOptions {
+  downloadLimit: number;
+  password: {
+    isEnabled: boolean;
+    value: string;
+  };
+}
+
 export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [linkGenerated, setLinkGenerated] = useState(false);
   const [shareLink, setShareLink] = useState("");
-  const [expirationHours, setExpirationHours] = useState(24);
   const [downloadLimit, setDownloadLimit] = useState(1);
   const [isPasswordProtected, setIsPasswordProtected] = useState(false);
   const [password, setPassword] = useState("");
   const [currentTab, setCurrentTab] = useState("upload");
+  // const [isReupload, setIsReupload] = useState(false);
 
-  const { sessionId, sendMetadata, createSession, dataChannel } =
-    useWebRTCSender(SIGNALING_SERVER);
+  const {
+    sessionId,
+    sendMetadata,
+    createSession,
+    dataChannel,
+    totalDownloads,
+  } = useWebRTCSender(SIGNALING_SERVER);
 
   const handleFileSelected = (selectedFile: File) => {
     setFile(selectedFile);
@@ -38,16 +51,34 @@ export default function UploadPage() {
 
   useEffect(() => {
     if (dataChannel.isReady && dataChannel.isOpen && file) {
-      sendMetadata(file);
+      sendMetadata(file, {
+        downloadLimit,
+        password: {
+          isEnabled: isPasswordProtected,
+          value: password,
+        },
+      });
     }
-  }, [dataChannel, file, sendMetadata]);
+  }, [
+    dataChannel,
+    file,
+    sendMetadata,
+    downloadLimit,
+    isPasswordProtected,
+    password,
+  ]);
 
   const handleUpload = () => {
     if (!file) return;
 
     createSession();
 
-    setIsUploading(true);
+    setIsUploading(false);
+
+    // if (isReupload) {
+    //   setIsReupload(false);
+    //   setLinkGenerated(true);
+    // }
 
     // Simulate upload progress
     let progress = 0;
@@ -58,15 +89,29 @@ export default function UploadPage() {
       if (progress >= 100) {
         clearInterval(interval);
         setIsUploading(false);
+        setUploadProgress(0);
       }
     }, 200);
   };
 
+  // const cleanUpFile = () => {
+  //   setFile(null);
+  // };
+
+  // const handleReupload = () => {
+  //   cleanUpFile();
+  //   setIsReupload(true);
+
+  //   setLinkGenerated(false);
+  // };
+
   useEffect(() => {
+    console.log("New session", sessionId);
     if (sessionId) {
       const generatedLink = `${window.location.origin}/download/${sessionId}`;
       setShareLink(generatedLink);
       setLinkGenerated(true);
+      setCurrentTab("upload");
     }
   }, [sessionId]);
 
@@ -94,7 +139,7 @@ export default function UploadPage() {
           <TabsTrigger
             onClick={() => setCurrentTab("options")}
             value="options"
-            disabled={!file}
+            disabled={!file || linkGenerated}
           >
             Sharing Options
           </TabsTrigger>
@@ -147,6 +192,15 @@ export default function UploadPage() {
                 </>
               ) : (
                 <LinkGenerator
+                  // onReupload={handleReupload}
+                  totalDownloads={totalDownloads}
+                  downloadOptions={{
+                    downloadLimit: downloadLimit,
+                    password: {
+                      isEnabled: isPasswordProtected,
+                      value: password,
+                    },
+                  }}
                   shareLink={shareLink}
                   onShowQR={() => document.getElementById("qr-tab")?.click()}
                 />

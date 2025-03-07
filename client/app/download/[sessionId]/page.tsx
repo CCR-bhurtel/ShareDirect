@@ -100,7 +100,26 @@ export default function DownloadPage() {
 
       <Card>
         <CardContent className="pt-6">
-          {metadataLoaded && receivingFile.current ? (
+          {error || socketError ? (
+            <div className="py-12 text-center space-y-4">
+              <div className="inline-flex items-center justify-center rounded-full bg-amber-100 p-2">
+                <AlertTriangle className="h-6 w-6 text-amber-600" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-medium">
+                  {error || socketError || "File not found"}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {error || socketError
+                    ? ""
+                    : "The file you're looking for may have expired, been downloaded already, or never existed."}
+                </p>
+              </div>
+              <Button asChild>
+                <Link href="/">Return to Home</Link>
+              </Button>
+            </div>
+          ) : metadataLoaded && receivingFile.current ? (
             <div className="space-y-6">
               <div className="space-y-2">
                 <h1 className="text-2xl font-bold">Download File</h1>
@@ -177,22 +196,6 @@ export default function DownloadPage() {
                   Download File
                 </Button>
               )}
-            </div>
-          ) : error || socketError ? (
-            <div className="py-12 text-center space-y-4">
-              <div className="inline-flex items-center justify-center rounded-full bg-amber-100 p-2">
-                <AlertTriangle className="h-6 w-6 text-amber-600" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-lg font-medium">File Not Found</h3>
-                <p className="text-sm text-muted-foreground">
-                  The file you're looking for may have expired, been downloaded
-                  already, or never existed.
-                </p>
-              </div>
-              <Button asChild>
-                <Link href="/">Return to Home</Link>
-              </Button>
             </div>
           ) : null}
         </CardContent>

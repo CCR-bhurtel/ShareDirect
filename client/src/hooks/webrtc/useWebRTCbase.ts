@@ -22,6 +22,10 @@ export const useWebRTCBase = (wsUrl: string) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log("New session id in base", sessionId);
+  }, [sessionId]);
+
+  useEffect(() => {
     const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {

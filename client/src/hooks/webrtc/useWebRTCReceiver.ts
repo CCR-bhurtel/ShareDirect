@@ -49,6 +49,11 @@ export const useWebRTCReceiver = (wsUrl: string) => {
         setLoading(true);
         const jsonData = JSON.parse(event.data);
 
+        if (jsonData.type == "download-limit-reached") {
+          setError("File download limit reached");
+          return;
+        }
+
         if (jsonData.type == "file-metadata") {
           receivingFile.current = {
             metadata: jsonData,
@@ -88,6 +93,11 @@ export const useWebRTCReceiver = (wsUrl: string) => {
           receivingFile.current.receivedSize = newReceivedSize;
 
           if (newReceivedSize >= receivingFile.current.totalSize) {
+            dataChannelRef.current?.send(
+              JSON.stringify({
+                type: "file-received",
+              })
+            );
             setLoading(false);
           }
         }
@@ -95,7 +105,7 @@ export const useWebRTCReceiver = (wsUrl: string) => {
         setLoading(false);
       }
     },
-    [receivingFile]
+    [receivingFile, setError]
   );
 
   const createPeerConnection = useCallback(() => {
@@ -179,6 +189,7 @@ export const useWebRTCReceiver = (wsUrl: string) => {
 
     const handleReceiverMessages = async (event: MessageEvent) => {
       const msg: WebRTCMessage = JSON.parse(event.data);
+      console.log(msg);
 
       switch (msg.action) {
         case "session_created":
@@ -187,7 +198,6 @@ export const useWebRTCReceiver = (wsUrl: string) => {
           break;
 
         case "offer":
-          console.log("Received offer", msg.sdp);
           const pc2 = createPeerConnection();
           await pc2.setRemoteDescription(JSON.parse(msg.sdp!));
           const answer = await pc2.createAnswer();

@@ -4,7 +4,6 @@ import { useState, useRef, type DragEvent, type ChangeEvent } from "react";
 import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-
 interface FileUploaderProps {
   onFileSelected: (file: File) => void;
   isUploading: boolean;

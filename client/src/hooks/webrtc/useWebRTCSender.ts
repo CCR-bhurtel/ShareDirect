@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useWebRTCBase, WebRTCMessage } from "./useWebRTCbase";
+import { FileDownloadOptions } from "../../../app/upload/page";
 
 // Sender-specific logic
 export const useWebRTCSender = (wsUrl: string) => {
@@ -11,6 +12,10 @@ export const useWebRTCSender = (wsUrl: string) => {
   const targetIdRef = useRef<string | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
   const fileRef = useRef<File | null>(null);
+  const fileOptionsRef = useRef<FileDownloadOptions | null>(null);
+
+  // state for tracking total file downloads
+  const [totalDownloads, setTotalDownloads] = useState(0);
 
   const [dataChannelState, setDataChannelState] = useState<{
     isReady: boolean;
@@ -90,13 +95,9 @@ export const useWebRTCSender = (wsUrl: string) => {
 
   // send metadata first
   const sendMetadata = useCallback(
-    (file: File) => {
-      if (!dataChannelRef.current || !dataChannelState.isOpen) {
-        console.error("Data channel is not open for sending");
-        return;
-      }
-
+    (file: File, options?: FileDownloadOptions) => {
       fileRef.current = file;
+      if (options) fileOptionsRef.current = options;
 
       try {
         dataChannelRef.current?.send(
@@ -111,13 +112,25 @@ export const useWebRTCSender = (wsUrl: string) => {
       }
     },
 
-    [dataChannelState, dataChannelRef]
+    [dataChannelRef]
   );
 
   const sendFile = useCallback(() => {
     const chunkSize = 16384;
     const fileReader = new FileReader();
     let offset = 0;
+
+    if (
+      totalDownloads &&
+      fileOptionsRef.current?.downloadLimit &&
+      totalDownloads >= fileOptionsRef.current.downloadLimit
+    ) {
+      console.log("Sending download limit reached");
+      dataChannelRef.current?.send(
+        JSON.stringify({ type: "download-limit-reached" })
+      );
+      return;
+    }
 
     fileReader.onload = (e) => {
       if (!fileRef.current) {
@@ -143,7 +156,7 @@ export const useWebRTCSender = (wsUrl: string) => {
     };
 
     readSlice(0);
-  }, []);
+  }, [totalDownloads]);
 
   // handling send file request
   const handleIncomingMessage = useCallback(
@@ -153,6 +166,11 @@ export const useWebRTCSender = (wsUrl: string) => {
         console.log(jsonData);
 
         if (jsonData.type == "send-file-request") sendFile();
+        else if (jsonData.type == "file-received") {
+          setTotalDownloads((prev) => prev + 1);
+
+          cleanupConnection();
+        }
       } catch (err) {
         console.log(err);
       }
@@ -197,6 +215,19 @@ export const useWebRTCSender = (wsUrl: string) => {
     [createPeerConnection, handleIncomingMessage, safeSend]
   );
 
+  const cleanupConnection = useCallback(() => {
+    if (dataChannelRef.current) {
+      dataChannelRef.current.close();
+    }
+
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+
+    targetIdRef.current = null;
+  }, [dataChannelRef, peerConnectionRef, targetIdRef]);
+
   useEffect(() => {
     if (!socketRef.current) return;
 
@@ -206,6 +237,7 @@ export const useWebRTCSender = (wsUrl: string) => {
 
         switch (msg.action) {
           case "session_created":
+            console.log("Session created", msg.session_id);
             setSessionId(msg.session_id!);
             break;
 
@@ -253,26 +285,25 @@ export const useWebRTCSender = (wsUrl: string) => {
     socketRef.current.addEventListener("message", handleSenderMessages);
 
     return () => {
-      if (socketRef.current) {
-        socketRef.current.removeEventListener("message", handleSenderMessages);
-      }
-
-      if (dataChannelRef.current) {
-        dataChannelRef.current.close();
-      }
-
-      if (peerConnectionRef.current) {
-        peerConnectionRef.current.close();
-        peerConnectionRef.current = null;
-      }
-
-      targetIdRef.current = null;
+      cleanupConnection();
+      fileRef.current = null;
+      fileOptionsRef.current = null;
     };
-  }, [handlePeerJoined, setSessionId, setError]);
+  }, [
+    cleanupConnection,
+    handlePeerJoined,
+    setError,
+    socketRef,
+    setSessionId,
+    safeSend,
+    totalDownloads,
+  ]);
 
   return {
     ...base,
     sendMetadata,
+    totalDownloads,
+    cleanupConnection,
     dataChannel: {
       isReady: dataChannelState.isReady,
       isOpen: dataChannelState.isOpen,
