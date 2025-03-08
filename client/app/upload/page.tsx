@@ -41,7 +41,7 @@ export default function UploadPage() {
     sessionId,
     sendMetadata,
     createSession,
-    dataChannel,
+    dataChannelStates,
     totalDownloads,
   } = useWebRTCSender(SIGNALING_SERVER);
 
@@ -50,17 +50,18 @@ export default function UploadPage() {
   };
 
   useEffect(() => {
-    if (dataChannel.isReady && dataChannel.isOpen && file) {
-      sendMetadata(file, {
+    Object.keys(dataChannelStates).forEach((key) => {
+      if (!dataChannelStates[key].isReady || !file) return;
+      sendMetadata(file, key, {
         downloadLimit,
         password: {
           isEnabled: isPasswordProtected,
           value: password,
         },
       });
-    }
+    });
   }, [
-    dataChannel,
+    dataChannelStates,
     file,
     sendMetadata,
     downloadLimit,
