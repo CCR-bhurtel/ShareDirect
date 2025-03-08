@@ -12,6 +12,7 @@ export const useWebRTCReceiver = (wsUrl: string) => {
   const [loading, setLoading] = useState(false);
   const [transferProgress, setTransferProgress] = useState(0);
   const [metadataLoaded, setMetadataLoaded] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   const [dataChannelState, setDataChannelState] = useState<{
     isReady: boolean;
@@ -33,15 +34,19 @@ export const useWebRTCReceiver = (wsUrl: string) => {
     receivedSize: 0,
   });
 
-  const sendDownloadRequest = useCallback(() => {
-    if (!dataChannelRef.current || !dataChannelState.isReady) return;
+  const sendDownloadRequest = useCallback(
+    (password: string) => {
+      if (!dataChannelRef.current || !dataChannelState.isReady) return;
 
-    dataChannelRef.current.send(
-      JSON.stringify({
-        type: "send-file-request",
-      })
-    );
-  }, [dataChannelRef, dataChannelState]);
+      dataChannelRef.current.send(
+        JSON.stringify({
+          type: "send-file-request",
+          password: password,
+        })
+      );
+    },
+    [dataChannelRef, dataChannelState]
+  );
 
   const handleIncomingMessage = useCallback(
     async (event: MessageEvent) => {
@@ -49,21 +54,24 @@ export const useWebRTCReceiver = (wsUrl: string) => {
         setLoading(true);
         const jsonData = JSON.parse(event.data);
 
-        if (jsonData.type == "download-limit-reached") {
-          setError("File download limit reached");
-          return;
-        }
+        switch (jsonData.type) {
+          case "download-limit-reached":
+            setError("File download limit reached");
+            return;
+          case "file-metadata":
+            console.log("Received metadata", jsonData);
+            receivingFile.current = {
+              metadata: jsonData,
+              receivedChunks: [],
+              totalSize: parseInt(jsonData.size),
+              receivedSize: 0,
+            };
 
-        if (jsonData.type == "file-metadata") {
-          receivingFile.current = {
-            metadata: jsonData,
-            receivedChunks: [],
-            totalSize: parseInt(jsonData.size),
-            receivedSize: 0,
-          };
-
-          setMetadataLoaded(true);
-          return;
+            setMetadataLoaded(true);
+            return;
+          case "password-incorrect":
+            setPasswordError("Incorrect password");
+            return;
         }
       } catch {
         if (
@@ -159,8 +167,18 @@ export const useWebRTCReceiver = (wsUrl: string) => {
       }
     };
 
-    pc.onicecandidateerror = (event) => {
-      console.error("ICE candidate error", event);
+    pc.onicecandidateerror = () => {
+      setError("Peer not found, please try again");
+    };
+
+    pc.onconnectionstatechange = () => {
+      if (
+        pc.connectionState === "disconnected" ||
+        pc.connectionState === "failed" ||
+        pc.connectionState === "closed"
+      ) {
+        setError("Peer not found, please try again");
+      }
     };
 
     peerConnectionRef.current = pc;
@@ -197,7 +215,7 @@ export const useWebRTCReceiver = (wsUrl: string) => {
           break;
 
         case "offer":
-          console.log("Got offer")
+          console.log("Got offer");
           const pc2 = createPeerConnection();
           await pc2.setRemoteDescription(JSON.parse(msg.sdp!));
           const answer = await pc2.createAnswer();
@@ -216,6 +234,10 @@ export const useWebRTCReceiver = (wsUrl: string) => {
           if (!msg.candidate || !peerConnectionRef.current) return;
           const candidate = new RTCIceCandidate(JSON.parse(msg.candidate!));
           await peerConnectionRef.current.addIceCandidate(candidate);
+          break;
+
+        case "peer_left":
+          setError("Peer left the session");
           break;
 
         case "error":
@@ -264,6 +286,8 @@ export const useWebRTCReceiver = (wsUrl: string) => {
     downloadReceivedFile,
     metadataLoaded,
     sendDownloadRequest,
+    passwordError,
+    setPasswordError,
     dataChannel: {
       isReady: dataChannelState.isReady,
       isOpen: dataChannelState.isOpen,

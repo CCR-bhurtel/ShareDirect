@@ -12,6 +12,7 @@ export interface FileMetadata {
   type: "file-metadata";
   name: string;
   size: number;
+  isPasswordProtected: boolean;
 }
 
 // base hook for WebRTC, To be used by both sender and receiver

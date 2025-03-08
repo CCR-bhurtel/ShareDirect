@@ -14,6 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import FileUploader from "@/components/file-uploader";
 import LinkGenerator from "@/components/link-generator";
 import QRCodeGenerator from "@/components/qr-code-generator";
+import ConnectedPeers from "@/components/connected-peers";
 import { useWebRTCSender } from "@/hooks/webrtc/useWebRTCSender";
 import { SIGNALING_SERVER } from "@/config/keys";
 
@@ -35,7 +36,6 @@ export default function UploadPage() {
   const [isPasswordProtected, setIsPasswordProtected] = useState(false);
   const [password, setPassword] = useState("");
   const [currentTab, setCurrentTab] = useState("upload");
-  // const [isReupload, setIsReupload] = useState(false);
 
   const {
     sessionId,
@@ -43,6 +43,9 @@ export default function UploadPage() {
     createSession,
     dataChannelStates,
     totalDownloads,
+    transfersInProgress,
+    transferProgress,
+    peerIds,
   } = useWebRTCSender(SIGNALING_SERVER);
 
   const handleFileSelected = (selectedFile: File) => {
@@ -76,11 +79,6 @@ export default function UploadPage() {
 
     setIsUploading(false);
 
-    // if (isReupload) {
-    //   setIsReupload(false);
-    //   setLinkGenerated(true);
-    // }
-
     // Simulate upload progress
     let progress = 0;
     const interval = setInterval(() => {
@@ -94,17 +92,6 @@ export default function UploadPage() {
       }
     }, 200);
   };
-
-  // const cleanUpFile = () => {
-  //   setFile(null);
-  // };
-
-  // const handleReupload = () => {
-  //   cleanUpFile();
-  //   setIsReupload(true);
-
-  //   setLinkGenerated(false);
-  // };
 
   useEffect(() => {
     console.log("New session", sessionId);
@@ -133,7 +120,7 @@ export default function UploadPage() {
       </div>
 
       <Tabs value={currentTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2  md:grid-cols-3 ">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
           <TabsTrigger onClick={() => setCurrentTab("upload")} value="upload">
             Upload File
           </TabsTrigger>
@@ -143,6 +130,13 @@ export default function UploadPage() {
             disabled={!file || linkGenerated}
           >
             Sharing Options
+          </TabsTrigger>
+          <TabsTrigger
+            disabled={!linkGenerated}
+            onClick={() => setCurrentTab("peers")}
+            value="peers"
+          >
+            Connected Peers
           </TabsTrigger>
           <TabsTrigger
             onClick={() => setCurrentTab("qr")}
@@ -193,7 +187,6 @@ export default function UploadPage() {
                 </>
               ) : (
                 <LinkGenerator
-                  // onReupload={handleReupload}
                   totalDownloads={totalDownloads}
                   downloadOptions={{
                     downloadLimit: downloadLimit,
@@ -213,26 +206,6 @@ export default function UploadPage() {
         <TabsContent value="options" className="mt-6">
           <Card>
             <CardContent className="pt-6 space-y-6">
-              {/* <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <Label htmlFor="expiration">Link Expiration</Label>
-                  </div>
-                  <span className="text-sm font-medium">
-                    {expirationHours} {expirationHours === 1 ? "hour" : "hours"}
-                  </span>
-                </div>
-                <Slider
-                  id="expiration"
-                  min={1}
-                  max={72}
-                  step={1}
-                  value={[expirationHours]}
-                  onValueChange={(value) => setExpirationHours(value[0])}
-                />
-              </div> */}
-
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
@@ -290,6 +263,15 @@ export default function UploadPage() {
               </Button>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="peers" className="mt-6">
+          <ConnectedPeers
+            peerIds={peerIds}
+            dataChannelStates={dataChannelStates}
+            transferProgress={transferProgress}
+            transfersInProgress={transfersInProgress}
+          />
         </TabsContent>
 
         <TabsContent value="qr" className="mt-6">

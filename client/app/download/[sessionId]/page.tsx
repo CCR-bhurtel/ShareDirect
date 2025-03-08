@@ -12,27 +12,23 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useWebRTCReceiver } from "@/hooks/webrtc";
 import { SIGNALING_SERVER } from "@/config/keys";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 export default function DownloadPage() {
   const params = useParams();
   const fileId = params.sessionId as string;
 
-  // const [fileInfo, setFileInfo] = useState<{
-  //   name: string;
-  //   size: number;
-  //   type: string;
-  //   passwordProtected: boolean;
-  // } | null>(null);
-  // const [password, setPassword] = useState("");
-  const [isDownloading, setIsDownloading] = useState(false);
-
   const [error, setError] = useState<string | null>(null);
+  const [password, setPassword] = useState("");
 
   const {
     joinSession,
     sessionId,
     createSession,
     isConnected,
+    passwordError,
+    setPasswordError,
     error: socketError,
     receivingFile,
     metadataLoaded,
@@ -57,11 +53,16 @@ export default function DownloadPage() {
     joinSession(fileId);
   }, [fileId, joinSession, sessionId, isConnected]);
 
+  const handlePasswordChange = (value: string) => {
+    setPassword(value);
+
+    setPasswordError(null);
+  };
+
   const handleDownload = useCallback(() => {
     if (!dataChannel.isReady) return;
-    setIsDownloading(true);
-    sendDownloadRequest();
-  }, [dataChannel, sendDownloadRequest]);
+    sendDownloadRequest(password);
+  }, [dataChannel, sendDownloadRequest, password]);
 
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return bytes + " B";
@@ -85,7 +86,6 @@ export default function DownloadPage() {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      setIsDownloading(false);
     }
   }, [transferProgress]);
 
@@ -100,7 +100,7 @@ export default function DownloadPage() {
 
       <Card>
         <CardContent className="pt-6">
-          {error || socketError ? (
+          {(error || socketError) && transferProgress < 100 ? (
             <div className="py-12 text-center space-y-4">
               <div className="inline-flex items-center justify-center rounded-full bg-amber-100 p-2">
                 <AlertTriangle className="h-6 w-6 text-amber-600" />
@@ -147,21 +147,25 @@ export default function DownloadPage() {
                   </div>
                 </div>
               </div>
-              {/* 
-              {fileInfo.passwordProtected && (
+
+              {receivingFile.current?.metadata?.isPasswordProtected && (
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
                   <Input
                     id="password"
                     type="password"
                     placeholder="Enter file password"
+                    className={`${passwordError ? "border-destructive" : ""}`}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => handlePasswordChange(e.target.value)}
                   />
+                  {passwordError && (
+                    <p className="text-sm text-destructive">{passwordError}</p>
+                  )}
                 </div>
-              )} */}
+              )}
 
-              {isDownloading && (
+              {transferProgress > 0 && transferProgress < 100 && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span>Downloading...</span>
@@ -190,7 +194,7 @@ export default function DownloadPage() {
                 <Button
                   className="w-full"
                   onClick={handleDownload}
-                  disabled={isDownloading}
+                  disabled={transferProgress > 0}
                 >
                   <Download className="mr-2 h-4 w-4" />
                   Download File

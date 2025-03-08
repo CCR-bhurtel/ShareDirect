@@ -11,6 +11,7 @@ export const useWebRTCSender = (wsUrl: string) => {
   // Maps to track multiple connections
   const peerConnectionMap = useRef<Map<string, RTCPeerConnection>>(new Map());
   const dataChannelMap = useRef<Map<string, RTCDataChannel>>(new Map());
+  const fileDownloadOptionsRef = useRef<FileDownloadOptions | null>(null);
 
   // Track active file transfers
   const activeTransfers = useRef<
@@ -235,6 +236,7 @@ export const useWebRTCSender = (wsUrl: string) => {
   const sendMetadata = useCallback(
     (file: File, peerId: string, options?: FileDownloadOptions) => {
       if (isUnmounting.current) return false;
+      fileDownloadOptionsRef.current = options || null;
 
       const dataChannel = dataChannelMap.current?.get(peerId);
       if (!dataChannel || dataChannel.readyState !== "open") {
@@ -256,6 +258,8 @@ export const useWebRTCSender = (wsUrl: string) => {
             type: "file-metadata",
             name: file.name,
             size: file.size,
+            isPasswordProtected:
+              options?.password.isEnabled && !!options.password.value,
           })
         );
 
@@ -402,6 +406,21 @@ export const useWebRTCSender = (wsUrl: string) => {
 
         if (jsonData.type === "send-file-request") {
           console.log(`File request from peer ${peerId}`);
+          // check for password in jsonData
+          if (fileDownloadOptionsRef.current?.password?.value) {
+            const password = fileDownloadOptionsRef.current.password.value;
+            if (jsonData.password !== password) {
+              console.log(`Password mismatch for peer ${peerId}`);
+              dataChannelMap.current.get(peerId)?.send(
+                JSON.stringify({
+                  type: "password-incorrect",
+                  message: "Incorrect password",
+                })
+              );
+              return;
+            }
+          }
+
           sendFile(peerId);
         } else if (jsonData.type === "file-received") {
           console.log(`File received confirmation from peer ${peerId}`);
@@ -432,10 +451,7 @@ export const useWebRTCSender = (wsUrl: string) => {
             }
           }
 
-          // Connection remains open and ready for more transfers
-          console.log(
-            `Connection to peer ${peerId} remains open for more transfers`
-          );
+          cleanupSingleConnection(peerId);
         } else if (jsonData.type === "error") {
           console.error(`Error from peer ${peerId}:`, jsonData.message);
         }
@@ -476,6 +492,9 @@ export const useWebRTCSender = (wsUrl: string) => {
           ...prev,
           [peerId]: { isReady: false, isOpen: false },
         }));
+
+        // send close signal to all connected peers
+        safeSend({ action: "peer_left", session_id: peerId });
       };
 
       dataChannel.onerror = (error) => {
@@ -641,6 +660,11 @@ export const useWebRTCSender = (wsUrl: string) => {
     });
   }, []);
 
+  const getPeerIds = useCallback(
+    () => Array.from(peerConnectionMap.current.keys()),
+    [peerConnectionMap]
+  );
+
   // Return enhanced API
   return {
     ...base,
@@ -653,7 +677,7 @@ export const useWebRTCSender = (wsUrl: string) => {
     cleanupConnection: cleanupAllConnections,
     cleanupPeerConnection: cleanupSingleConnection,
     resetPeerTransfer,
-    getPeerIds: () => Array.from(peerConnectionMap.current.keys()),
+    peerIds: getPeerIds(),
     getActiveTransferCount: () => transfersInProgress.length,
     getConnectedPeerCount: () => peerConnectionMap.current.size,
   };
