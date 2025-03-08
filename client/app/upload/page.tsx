@@ -49,6 +49,11 @@ export default function UploadPage() {
   } = useWebRTCSender(SIGNALING_SERVER);
 
   const handleFileSelected = (selectedFile: File) => {
+    // check file size (10GB)
+    if (selectedFile.size > 10 * 1024 * 1024 * 1024) {
+      alert("File size should be less than 10GB");
+      return;
+    }
     setFile(selectedFile);
   };
 
@@ -120,13 +125,14 @@ export default function UploadPage() {
       </div>
 
       <Tabs value={currentTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
+        <TabsList className="grid w-full  grid-cols-2 md:grid-cols-4">
           <TabsTrigger onClick={() => setCurrentTab("upload")} value="upload">
             Upload File
           </TabsTrigger>
           <TabsTrigger
             onClick={() => setCurrentTab("options")}
             value="options"
+            className="mt-2 md:mt-0"
             disabled={!file || linkGenerated}
           >
             Sharing Options
@@ -135,6 +141,7 @@ export default function UploadPage() {
             disabled={!linkGenerated}
             onClick={() => setCurrentTab("peers")}
             value="peers"
+            className="mt-2 md:mt-0"
           >
             Connected Peers
           </TabsTrigger>
@@ -143,6 +150,7 @@ export default function UploadPage() {
             value="qr"
             disabled={!linkGenerated}
             id="qr-tab"
+            className="mt-2 md:mt-0"
           >
             QR Code
           </TabsTrigger>

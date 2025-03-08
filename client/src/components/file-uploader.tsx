@@ -81,7 +81,7 @@ export default function FileUploader({
         <Button onClick={handleButtonClick} disabled={isUploading}>
           Select File
         </Button>
-        <p className="text-xs text-muted-foreground">Maximum file size: 1GB</p>
+        <p className="text-xs text-muted-foreground">Maximum file size: 10GB</p>
       </div>
     </div>
   );
