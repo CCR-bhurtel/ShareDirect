@@ -1,5 +1,8 @@
-import type { NextConfig } from "next";
+// @ts-check
 
+import { NextConfig } from "next";
+
+/** @type {import('next').NextConfig} */
 const nextConfig: NextConfig = {
   /* config options here */
   eslint: {
@@ -7,4 +10,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+module.exports = nextConfig;

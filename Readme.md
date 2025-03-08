@@ -65,22 +65,27 @@ The frontend should now be running on `http://localhost:3000`.
 
 ## TODOs & Improvements
 
-- [] Checkin if peer left
-- [ ] Add Download limit feature (Currently no limit until sender is online)
-- [ ] Sending to multiple peers
-- [ ] Add Password protection
+- [✅] Checkin if peer left
+- [✅] Add Download limit feature (Currently no limit until sender is online)
+- [✅] Sending to multiple peers
+- [✅] Add Password protection
+
+- [] Add password encryption and decryption
+- [] Add file encryption and decryption
+
+## Contributing
 
 ## Awesome features to be implemented
 
-11. Browser-Based P2P Transfer Even if the Sender Leaves
+     Browser-Based P2P Transfer Even if the Sender Leaves
 
-💡 If the sender closes the tab, most WebRTC-based P2P transfers fail.
-🛠 Solution: Implement Service Workers + Shared WebRTC Peers so the transfer can continue even after the sender disconnects.
+    💡 If the sender closes the tab, most WebRTC-based P2P transfers fail.
+    🛠 Solution: Implement Service Workers + Shared WebRTC Peers so the transfer can continue even after the sender disconnects.
 
-"Secret File Sharing Rooms" With Temporary Usernames
+    "Secret File Sharing Rooms" With Temporary Usernames
 
-💡 P2P tools usually require links—not ephemeral rooms.
-🛠 Solution: Let people create anonymous file-sharing rooms where users get random names like "BlueFox42" and can drop files without sign-up.
+    💡 P2P tools usually require links—not ephemeral rooms.
+    🛠 Solution: Let people create anonymous file-sharing rooms where users get random names like "BlueFox42" and can drop files without sign-up.
 
 ## License
 
