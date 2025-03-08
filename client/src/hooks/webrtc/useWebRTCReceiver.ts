@@ -189,7 +189,6 @@ export const useWebRTCReceiver = (wsUrl: string) => {
 
     const handleReceiverMessages = async (event: MessageEvent) => {
       const msg: WebRTCMessage = JSON.parse(event.data);
-      console.log(msg);
 
       switch (msg.action) {
         case "session_created":
@@ -198,6 +197,7 @@ export const useWebRTCReceiver = (wsUrl: string) => {
           break;
 
         case "offer":
+          console.log("Got offer")
           const pc2 = createPeerConnection();
           await pc2.setRemoteDescription(JSON.parse(msg.sdp!));
           const answer = await pc2.createAnswer();
