@@ -6,7 +6,7 @@ import { FileDownloadOptions } from "../../../app/upload/page";
 // Enhanced sender-specific logic for multiple concurrent connections
 export const useWebRTCSender = (wsUrl: string) => {
   const base = useWebRTCBase(wsUrl);
-  const { socketRef, setError, setSessionId } = base;
+  const { socketRef, setError, setSessionId, isConnected } = base;
 
   // Maps to track multiple connections
   const peerConnectionMap = useRef<Map<string, RTCPeerConnection>>(new Map());
@@ -66,11 +66,7 @@ export const useWebRTCSender = (wsUrl: string) => {
         if (isUnmounting.current) return;
 
         const currentSocket = socketRef.current;
-        if (
-          event.candidate &&
-          currentSocket &&
-          currentSocket.readyState === WebSocket.OPEN
-        ) {
+        if (event.candidate && currentSocket && isConnected) {
           const candidateKey = `${event.candidate.candidate}:${event.candidate.sdpMid}:${event.candidate.sdpMLineIndex}`;
           if (sentCandidates.has(candidateKey)) return;
           sentCandidates.add(candidateKey);
@@ -126,7 +122,7 @@ export const useWebRTCSender = (wsUrl: string) => {
       if (isUnmounting.current) return false;
 
       const currentSocket = socketRef.current;
-      if (currentSocket && currentSocket.readyState === WebSocket.OPEN) {
+      if (currentSocket && isConnected) {
         try {
           currentSocket.send(JSON.stringify(data));
           return true;
@@ -615,7 +611,7 @@ export const useWebRTCSender = (wsUrl: string) => {
       }
     };
 
-    socketRef.current.addEventListener("message", handleSenderMessages);
+    socketRef.current.onAny(handleSenderMessages);
 
     // Clean up ONLY when the component is truly unmounting
     return () => {
@@ -624,7 +620,7 @@ export const useWebRTCSender = (wsUrl: string) => {
       console.log("Component unmounting, cleaning up all connections");
 
       // Remove event listener
-      socketRef.current?.removeEventListener("message", handleSenderMessages);
+      socketRef.current?.offAny(handleSenderMessages);
 
       // Clean up all connections
       cleanupAllConnections();
