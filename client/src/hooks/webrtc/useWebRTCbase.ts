@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { Socket, io } from "socket.io-client";
 
 export interface WebRTCMessage {
   action: string;
@@ -8,6 +9,23 @@ export interface WebRTCMessage {
   candidate?: string;
 }
 
+interface ClientToServerEvents {
+  create_session: void;
+  join_session: string;
+  offer: { sdp: string; target: string };
+  answer: { sdp: string; target: string };
+  candidate: { candidate: string; target: string };
+}
+
+interface ServerToClientEvents {
+  session_created: { session_id: string };
+  peer_joined: { session_id: string };
+  offer: { sdp: string; target: string };
+  answer: { sdp: string; target: string };
+  candidate: { candidate: string; target: string };
+  error: string;
+}
+
 export interface FileMetadata {
   type: "file-metadata";
   name: string;
@@ -15,6 +33,7 @@ export interface FileMetadata {
   isPasswordProtected: boolean;
 }
 
+type WebSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 // base hook for WebRTC, To be used by both sender and receiver
 export const useWebRTCBase = (wsUrl: string) => {
   const socketRef = useRef<WebSocket | null>(null);
@@ -27,12 +46,15 @@ export const useWebRTCBase = (wsUrl: string) => {
   }, [sessionId]);
 
   useEffect(() => {
-    const ws = new WebSocket(wsUrl);
+    const ws: WebSocket = io(wsUrl, {
+      withCredentials: true,
+    });
 
-    ws.onopen = () => {
+    ws.on("connect", () => {
       console.log("Socket connected");
+
       setIsConnected(true);
-    };
+    });
 
     socketRef.current = ws;
 

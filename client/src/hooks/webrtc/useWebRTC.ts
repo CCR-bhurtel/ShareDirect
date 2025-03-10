@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { Socket, io } from "socket.io-client";
 
 interface WebRTCMessage {
   action: string;
@@ -8,6 +9,23 @@ interface WebRTCMessage {
   candidate?: string;
 }
 
+interface ClientToServerEvents {
+  create_session: void;
+  join_session: string;
+  offer: { sdp: string; target: string };
+  answer: { sdp: string; target: string };
+  candidate: { candidate: string; target: string };
+}
+
+interface ServerToClientEvents {
+  session_created: { session_id: string };
+  peer_joined: { session_id: string };
+  offer: { sdp: string; target: string };
+  answer: { sdp: string; target: string };
+  candidate: { candidate: string; target: string };
+  error: string;
+}
+
 interface FileMetadata {
   type: "file-metadata";
   name: string;
@@ -15,7 +33,10 @@ interface FileMetadata {
 }
 
 export const useWebRTC = (wsUrl: string) => {
-  const socketRef = useRef<WebSocket | null>(null);
+  const socketRef = useRef<Socket<
+    ServerToClientEvents,
+    ClientToServerEvents
+  > | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const targetIdRef = useRef<string | null>(null);
   const [isConnected, setIsConnected] = useState(false); // socket connection flag
@@ -220,7 +241,7 @@ export const useWebRTC = (wsUrl: string) => {
   );
 
   useEffect(() => {
-    const ws = new WebSocket(wsUrl);
+    const ws: Socket<ServerToClientEvents, ClientToServerEvents> = io(wsUrl);
 
     ws.onopen = () => {
       setIsConnected(true);
