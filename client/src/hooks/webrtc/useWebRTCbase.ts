@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Socket, io } from "socket.io-client";
 
 export interface WebRTCMessage {
   action: string;
@@ -33,7 +32,6 @@ export interface FileMetadata {
   isPasswordProtected: boolean;
 }
 
-type WebSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 // base hook for WebRTC, To be used by both sender and receiver
 export const useWebRTCBase = (wsUrl: string) => {
   const socketRef = useRef<WebSocket | null>(null);
@@ -46,15 +44,13 @@ export const useWebRTCBase = (wsUrl: string) => {
   }, [sessionId]);
 
   useEffect(() => {
-    const ws: WebSocket = io(wsUrl, {
-      withCredentials: true,
-    });
+    const ws: WebSocket = new WebSocket(wsUrl);
 
-    ws.on("connect", () => {
+    ws.onopen = () => {
       console.log("Socket connected");
 
       setIsConnected(true);
-    });
+    };
 
     socketRef.current = ws;
 
