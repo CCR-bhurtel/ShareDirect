@@ -15,12 +15,13 @@ func main() {
 	mux := http.NewServeMux()
 
 	// Handle websocket connections
-	http.HandleFunc("/ws", signalingServer.HandleWebSocketConnection)
+	mux.HandleFunc("/ws", signalingServer.HandleWebSocketConnection)
 
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Content-Type"},
+		AllowedOrigins: []string{"*"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders: []string{"Content-Type"},
+
 		AllowCredentials: true,
 	})
 
