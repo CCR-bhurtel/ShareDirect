@@ -26,5 +26,5 @@ func main() {
 	handler := c.Handler(http.DefaultServeMux)
 
 	// Start the server
-	http.ListenAndServe(":"+config.GetPort(), handler)
+	http.ListenAndServe("0.0.0.0:"+config.GetPort(), handler)
 }
