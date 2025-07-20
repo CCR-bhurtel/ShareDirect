@@ -15,6 +15,16 @@ func main() {
 
 	http.HandleFunc("/ws", signalingServer.HandleWebSocketConnection)
 
+	// CORS configuration
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"*"},
+		AllowCredentials: true,
+	})
+
+	handler := c.Handler(http.DefaultServeMux)
+
 	// Start the server
-	http.ListenAndServe(":"+config.GetPort(), cors.AllowAll().Handler(http.DefaultServeMux))
+	http.ListenAndServe(":"+config.GetPort(), handler)
 }

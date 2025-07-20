@@ -6,7 +6,7 @@ import { FileDownloadOptions } from "../../../app/upload/page";
 // Enhanced sender-specific logic for multiple concurrent connections
 export const useWebRTCSender = (wsUrl: string) => {
   const base = useWebRTCBase(wsUrl);
-  const { socketRef, setError, setSessionId, isConnected } = base;
+  const { socketRef, setError, setSessionId, createSession } = base;
 
   // Maps to track multiple connections
   const peerConnectionMap = useRef<Map<string, RTCPeerConnection>>(new Map());
@@ -66,7 +66,11 @@ export const useWebRTCSender = (wsUrl: string) => {
         if (isUnmounting.current) return;
 
         const currentSocket = socketRef.current;
-        if (event.candidate && currentSocket && isConnected) {
+        if (
+          event.candidate &&
+          currentSocket &&
+          currentSocket.readyState === WebSocket.OPEN
+        ) {
           const candidateKey = `${event.candidate.candidate}:${event.candidate.sdpMid}:${event.candidate.sdpMLineIndex}`;
           if (sentCandidates.has(candidateKey)) return;
           sentCandidates.add(candidateKey);
@@ -122,7 +126,7 @@ export const useWebRTCSender = (wsUrl: string) => {
       if (isUnmounting.current) return false;
 
       const currentSocket = socketRef.current;
-      if (currentSocket && isConnected) {
+      if (currentSocket && currentSocket.readyState === WebSocket.OPEN) {
         try {
           currentSocket.send(JSON.stringify(data));
           return true;
@@ -611,7 +615,7 @@ export const useWebRTCSender = (wsUrl: string) => {
       }
     };
 
-    socketRef.current.onAny(handleSenderMessages);
+    socketRef.current.addEventListener("message", handleSenderMessages);
 
     // Clean up ONLY when the component is truly unmounting
     return () => {
@@ -620,7 +624,7 @@ export const useWebRTCSender = (wsUrl: string) => {
       console.log("Component unmounting, cleaning up all connections");
 
       // Remove event listener
-      socketRef.current?.offAny(handleSenderMessages);
+      socketRef.current?.removeEventListener("message", handleSenderMessages);
 
       // Clean up all connections
       cleanupAllConnections();

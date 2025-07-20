@@ -82,7 +82,7 @@ export default function UploadPage() {
 
     createSession();
 
-    setIsUploading(false);
+    setIsUploading(true);
 
     // Simulate upload progress
     let progress = 0;

@@ -8,23 +8,6 @@ export interface WebRTCMessage {
   candidate?: string;
 }
 
-interface ClientToServerEvents {
-  create_session: void;
-  join_session: string;
-  offer: { sdp: string; target: string };
-  answer: { sdp: string; target: string };
-  candidate: { candidate: string; target: string };
-}
-
-interface ServerToClientEvents {
-  session_created: { session_id: string };
-  peer_joined: { session_id: string };
-  offer: { sdp: string; target: string };
-  answer: { sdp: string; target: string };
-  candidate: { candidate: string; target: string };
-  error: string;
-}
-
 export interface FileMetadata {
   type: "file-metadata";
   name: string;

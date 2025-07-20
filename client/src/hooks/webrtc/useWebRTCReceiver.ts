@@ -246,10 +246,10 @@ export const useWebRTCReceiver = (wsUrl: string) => {
       }
     };
 
-    socketRef.current.onAny(handleReceiverMessages);
+    socketRef.current.addEventListener("message", handleReceiverMessages);
 
     return () => {
-      socketRef.current?.offAny(handleReceiverMessages);
+      socketRef.current?.removeEventListener("message", handleReceiverMessages);
       if (peerConnectionRef.current) {
         peerConnectionRef.current.close();
         peerConnectionRef.current = null;
