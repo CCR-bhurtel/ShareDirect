@@ -7,9 +7,9 @@ RUN go mod download
 
 COPY signaling_server/. .
 
-RUN go build -o main .
+RUN go build -o app .
 
 ENV PORT=8080
 EXPOSE 8080
 
-CMD ["./main"]
+CMD ["./app"]
